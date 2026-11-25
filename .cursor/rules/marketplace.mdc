@@ -1,0 +1,44 @@
+---
+description: Digital marketplace working rules for customer, seller, and admin
+alwaysApply: true
+---
+
+# Digital Marketplace
+
+One Next.js app in `apps/web`. Runtime data is the in-memory `MarketplaceService` (`apps/web/lib/marketplace.ts` singleton). UI edits hot-reload. Domain method changes need a dev-server restart. Do not start a second server if port 3000 is taken.
+
+Do not commit unless asked. Do not turn on Postgres, Redis delivery, email, Sentry, response envelopes, Idempotency-Key, or Playwright unless asked.
+
+## Money and inventory
+
+- Prices are integer USD cents from the server. Never trust a client price.
+- Do not store PAN or CVV. Inventory payloads are encrypted. Product APIs, logs, and admin tables show a masked reference only.
+- A revealed credential stays quarantined. Do not auto-restock it.
+
+## What the UI must not bring back
+
+- No Deals nav, homepage Hot Deals, or `/deals` catalog. `/deals` redirects to `/products`.
+- No wallet screen, balance, or Add Balance. `/account/wallet` redirects to `/account`. Ledger and server wallet routes stay. No withdrawals. No crypto checkout.
+- No favorites heart, save button, or favorites page. `/account/favorites` redirects to `/account`.
+- No header Orders link. My Orders stays in the account sidebar.
+- Phone numbers and virtual cards stay hidden unless `FEATURE_TELECOM` or `FEATURE_CARDS` is `"true"`. Admins cannot enable those built-in categories. Built-in categories cannot be deleted.
+- Do not restore removed hero illustrations.
+
+## Customer
+
+- Cart is an order request, not a payment. Submit needs email or Telegram, optional note max 500. Do not charge, confirm a demo payment, or deliver inventory. Clear the cart only after the request is saved.
+- Product detail shows price, quantity, Add to Cart, and Order Now. No deal price, plan picker, or stock line. Order Now adds the default variant and opens `/cart`.
+- Order-request status `AWAITING_CONTACT` is labeled **Awaiting**. Status badges hug the label (`w-fit`), with even left and right padding.
+
+## Seller
+
+- Seller links live under My Account when `user.sellerId` is set. They stay inside `/account/seller` so the account shell does not remount. Public store links stay `/seller/[slug]`.
+- Seller nav: Dashboard, Products, Order Requests, Sales & Reports, Store Settings. Customers, Inventory, Payouts, and Reviews are not in the nav. Product rows say **View** and open the editor.
+- My Account pages (Dashboard, My Orders, Profile, Tickets, Security) use the customer account style for sellers too. Do not restyle seller-section content to match them.
+
+## Demo access
+
+- Customer: `john@example.com` / `DemoPass123!` (no MFA).
+- Seller: `seller@premiumstore.demo` / `DemoPass123!`, then the on-screen MFA code.
+- Admin: `admin@demo.marketplace` / `DemoPass123!`, then the on-screen MFA code.
+- Sample catalog names are not brand-authorized. Keep the demo disclaimer.

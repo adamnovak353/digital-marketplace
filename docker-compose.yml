@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: marketplace
+      POSTGRES_DB: marketplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - marketplace-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.api
+    environment:
+      DEMO_MODE: "true"
+      PERSISTENCE: memory
+      DATABASE_URL: postgresql://marketplace:marketplace@postgres:5432/marketplace?schema=public
+      REDIS_URL: redis://redis:6379
+      API_PORT: 4000
+      WEB_ORIGIN: http://localhost:3000
+      SESSION_SECRET: demo-only-session-secret-change-me
+      INVENTORY_ENC_KEY: demo-only-inventory-key
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.worker
+    environment:
+      REDIS_URL: redis://redis:6379
+      DEMO_MODE: "true"
+    depends_on:
+      - redis
+
+  web:
+    build:
+      context: .
+      dockerfile: infrastructure/Dockerfile.web
+    environment:
+      DEMO_MODE: "true"
+      PERSISTENCE: memory
+      WEB_ORIGIN: http://localhost:3000
+      SESSION_SECRET: demo-only-session-secret-change-me
+      INVENTORY_ENC_KEY: demo-only-inventory-key
+    ports:
+      - "3000:3000"
+
+volumes:
+  marketplace-postgres:

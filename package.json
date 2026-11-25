@@ -1,0 +1,32 @@
+{
+  "name": "digital-marketplace",
+  "private": true,
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @marketplace/web dev",
+    "dev:api": "pnpm --filter @marketplace/api dev",
+    "dev:worker": "pnpm --filter @marketplace/worker dev",
+    "build": "pnpm --filter @marketplace/domain typecheck && pnpm --filter @marketplace/web build && pnpm --filter @marketplace/api build && pnpm --filter @marketplace/worker build",
+    "test": "pnpm --filter @marketplace/domain test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "lint": "pnpm -r --if-present lint",
+    "db:generate": "pnpm exec prisma generate",
+    "db:migrate": "pnpm exec prisma migrate deploy",
+    "db:seed": "pnpm exec tsx prisma/seed.ts"
+  },
+  "devDependencies": {
+    "prisma": "^6.6.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.6.0"
+  },
+  "prisma": {
+    "schema": "prisma/schema.prisma",
+    "seed": "tsx prisma/seed.ts"
+  }
+}

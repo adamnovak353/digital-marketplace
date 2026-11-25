@@ -1,0 +1,31 @@
+{
+  "name": "@marketplace/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marketplace/types": "workspace:*",
+    "@marketplace/validation": "workspace:*",
+    "nodemailer": "^6.10.1",
+    "pg": "^8.23.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@types/node": "^22.15.3",
+    "@types/nodemailer": "^6.4.24",
+    "@types/pg": "^8.23.1",
+    "@types/smtp-server": "^3.5.13",
+    "smtp-server": "^3.21.7",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.1"
+  }
+}

@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html { color-scheme: dark; }
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(255, 0, 200, 0.16), transparent 50%),
+    radial-gradient(700px 380px at 100% 0%, rgba(0, 229, 255, 0.1), transparent 46%),
+    #080B1B;
+  color: #F8FAFC;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(#000, transparent 85%);
+}
+
+* { scrollbar-width: thin; scrollbar-color: #31245a transparent; }
+
+:focus-visible {
+  outline: 2px solid #04D9FF;
+  outline-offset: 2px;
+}
+
+.neon-surface {
+  --neon: #e879f9;
+  border: 1.5px solid color-mix(in srgb, var(--neon) 82%, white) !important;
+  background-color: #10162c;
+  background-image: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--neon) 24%, transparent), transparent 58%);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon) 28%, transparent),
+    0 0 18px color-mix(in srgb, var(--neon) 55%, transparent),
+    0 0 42px color-mix(in srgb, var(--neon) 22%, transparent),
+    inset 0 0 24px color-mix(in srgb, var(--neon) 14%, transparent);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.neon-surface:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--neon) 70%, white),
+    0 0 24px color-mix(in srgb, var(--neon) 75%, transparent),
+    0 0 52px color-mix(in srgb, var(--neon) 36%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--neon) 18%, transparent);
+}
+
+.neon-cycle > .neon-surface:nth-child(5n + 1) { --neon: #00e5ff; }
+.neon-cycle > .neon-surface:nth-child(5n + 2) { --neon: #8b5cf6; }
+.neon-cycle > .neon-surface:nth-child(5n + 3) { --neon: #ff00c8; }
+.neon-cycle > .neon-surface:nth-child(5n + 4) { --neon: #00e5ff; }
+.neon-cycle > .neon-surface:nth-child(5n + 5) { --neon: #a855f7; }
+
+.neon-cyan { --neon: #00e5ff; }
+.neon-violet { --neon: #8b5cf6; }
+.neon-pink { --neon: #ff00c8; }
+
+.neon-icon {
+  display: grid;
+  height: 3.25rem;
+  width: 3.25rem;
+  place-items: center;
+  border-radius: 1rem;
+  color: var(--neon, #00e5ff);
+  background: color-mix(in srgb, var(--neon, #00e5ff) 16%, transparent);
+  box-shadow:
+    0 0 16px color-mix(in srgb, var(--neon, #00e5ff) 70%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--neon, #00e5ff) 35%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}

@@ -1,0 +1,474 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// The running app stores its full state in this single row (see packages/domain/src/persistence.ts).
+/// The normalized models below describe the target schema and are not read or written by the app yet.
+model MarketplaceState {
+  id        String   @id
+  revision  Int
+  data      Json
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("marketplace_state")
+}
+
+enum RoleName {
+  CUSTOMER
+  SELLER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+  SUSPENDED
+}
+
+enum ProductKind {
+  ACCOUNT
+  PHONE_NUMBER
+  VIRTUAL_CARD
+  SUBSCRIPTION
+  GAMING
+  LICENSE
+}
+
+enum DeliveryMode {
+  INSTANT
+  MANUAL
+}
+
+enum InventoryState {
+  AVAILABLE
+  RESERVED
+  DELIVERED
+  QUARANTINED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  FULFILLING
+  DELIVERED
+  AWAITING_SELLER
+  MANUAL_REVIEW
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  REQUIRES_ACTION
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum ProviderMode {
+  MOCK
+  LIVE
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+model User {
+  id              String     @id @default(uuid()) @db.Uuid
+  email           String     @unique
+  passwordHash    String
+  name            String
+  role            RoleName   @default(CUSTOMER)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  mfaEnabled      Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  seller          Seller?
+  orders          Order[]
+  reviews         Review[]
+  tickets         Ticket[]
+  wallet          Wallet?
+}
+
+model Seller {
+  id             String             @id @default(uuid()) @db.Uuid
+  userId         String?            @unique @db.Uuid
+  slug           String             @unique
+  displayName    String
+  status         SellerStatus       @default(PENDING)
+  country        String
+  bio            String
+  platformOwned  Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  user           User?              @relation(fields: [userId], references: [id])
+  verification   SellerVerification?
+  products       Product[]
+  payouts        Payout[]
+}
+
+model SellerVerification {
+  id         String             @id @default(uuid()) @db.Uuid
+  sellerId   String             @unique @db.Uuid
+  status     VerificationStatus @default(PENDING)
+  notes      String?
+  reviewedAt DateTime?
+  createdAt  DateTime           @default(now())
+  seller     Seller             @relation(fields: [sellerId], references: [id])
+}
+
+model Category {
+  id          String    @id @default(uuid()) @db.Uuid
+  slug        String    @unique
+  name        String
+  description String
+  products    Product[]
+}
+
+model Product {
+  id           String        @id @default(uuid()) @db.Uuid
+  slug         String        @unique
+  title        String
+  summary      String
+  description  String
+  kind         ProductKind
+  platform     String
+  delivery     DeliveryMode
+  status       ListingStatus @default(PENDING_REVIEW)
+  categoryId   String        @db.Uuid
+  sellerId     String        @db.Uuid
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  category     Category      @relation(fields: [categoryId], references: [id])
+  seller       Seller        @relation(fields: [sellerId], references: [id])
+  listing      Listing?
+  reviews      Review[]
+
+  @@index([categoryId, status])
+  @@index([sellerId, status])
+}
+
+model Listing {
+  id        String          @id @default(uuid()) @db.Uuid
+  productId String          @unique @db.Uuid
+  status    ListingStatus
+  product   Product         @relation(fields: [productId], references: [id])
+  variants  ListingVariant[]
+}
+
+model ListingVariant {
+  id              String      @id @default(uuid()) @db.Uuid
+  listingId       String      @db.Uuid
+  name            String
+  priceMinor      Int
+  compareAtMinor  Int?
+  currency        String      @default("USD")
+  region          String
+  listing         Listing     @relation(fields: [listingId], references: [id])
+  units           InventoryUnit[]
+
+  @@index([listingId])
+}
+
+model InventoryUnit {
+  id          String         @id @default(uuid()) @db.Uuid
+  variantId   String         @db.Uuid
+  sellerId    String         @db.Uuid
+  state       InventoryState @default(AVAILABLE)
+  ciphertext  String
+  iv          String
+  authTag     String
+  revealedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  variant     ListingVariant @relation(fields: [variantId], references: [id])
+  reservations InventoryReservation[]
+
+  @@index([variantId, state])
+}
+
+model InventoryReservation {
+  id        String   @id @default(uuid()) @db.Uuid
+  unitId    String   @db.Uuid
+  orderId   String   @db.Uuid
+  state     String
+  createdAt DateTime @default(now())
+  unit      InventoryUnit @relation(fields: [unitId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+model Cart {
+  id        String     @id @default(uuid()) @db.Uuid
+  ownerKey  String     @unique
+  couponCode String?
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String @id @default(uuid()) @db.Uuid
+  cartId    String @db.Uuid
+  variantId String @db.Uuid
+  quantity  Int
+  cart      Cart   @relation(fields: [cartId], references: [id])
+
+  @@unique([cartId, variantId])
+}
+
+model Order {
+  id             String      @id @default(uuid()) @db.Uuid
+  number         String      @unique
+  userId         String?     @db.Uuid
+  email          String
+  status         OrderStatus
+  currency       String      @default("USD")
+  subtotalMinor  Int
+  discountMinor  Int
+  feeMinor       Int
+  totalMinor     Int
+  couponCode     String?
+  paymentMethod  String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  user           User?       @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  payment        Payment?
+  delivery       Delivery?
+  reservations   InventoryReservation[]
+  refunds        Refund[]
+  disputes       Dispute[]
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model OrderItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  orderId         String  @db.Uuid
+  variantId       String  @db.Uuid
+  title           String
+  quantity        Int
+  unitPriceMinor  Int
+  lineTotalMinor  Int
+  sellerNetMinor  Int
+  commissionMinor Int
+  order           Order   @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+model Payment {
+  id          String        @id @default(uuid()) @db.Uuid
+  orderId     String        @unique @db.Uuid
+  provider    String
+  method      String
+  amountMinor Int
+  currency    String        @default("USD")
+  status      PaymentStatus
+  createdAt   DateTime      @default(now())
+  order       Order         @relation(fields: [orderId], references: [id])
+  events      PaymentEvent[]
+}
+
+model PaymentEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  paymentId  String   @db.Uuid
+  provider   String
+  eventId    String
+  type       String
+  createdAt  DateTime @default(now())
+  payment    Payment  @relation(fields: [paymentId], references: [id])
+
+  @@unique([provider, eventId])
+}
+
+model Delivery {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @unique @db.Uuid
+  status    String
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+}
+
+model Wallet {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @db.Uuid
+  currency  String   @default("USD")
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model LedgerEntry {
+  id           String          @id @default(uuid()) @db.Uuid
+  transactionId String
+  account      String
+  direction    LedgerDirection
+  amountMinor  Int
+  currency     String          @default("USD")
+  memo         String
+  orderId      String?         @db.Uuid
+  createdAt    DateTime        @default(now())
+
+  @@index([account, createdAt])
+  @@index([transactionId])
+}
+
+model Payout {
+  id          String       @id @default(uuid()) @db.Uuid
+  sellerId    String       @db.Uuid
+  amountMinor Int
+  currency    String       @default("USD")
+  status      PayoutStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  seller      Seller       @relation(fields: [sellerId], references: [id])
+
+  @@index([sellerId, status])
+}
+
+model Refund {
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @db.Uuid
+  amountMinor Int
+  currency    String   @default("USD")
+  reason      String
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  userId    String   @db.Uuid
+  rating    Int
+  comment   String
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([productId, userId])
+}
+
+model Ticket {
+  id        String          @id @default(uuid()) @db.Uuid
+  number    String          @unique
+  userId    String          @db.Uuid
+  subject   String
+  status    TicketStatus    @default(OPEN)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  user      User            @relation(fields: [userId], references: [id])
+  messages  TicketMessage[]
+}
+
+model TicketMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  ticketId  String   @db.Uuid
+  author    String
+  body      String
+  createdAt DateTime @default(now())
+  ticket    Ticket   @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+}
+
+model Dispute {
+  id         String        @id @default(uuid()) @db.Uuid
+  orderId    String        @db.Uuid
+  reason     String
+  status     DisputeStatus @default(OPEN)
+  resolution String?
+  createdAt  DateTime      @default(now())
+  order      Order         @relation(fields: [orderId], references: [id])
+}
+
+model Provider {
+  id     String       @id @default(uuid()) @db.Uuid
+  key    String       @unique
+  name   String
+  mode   ProviderMode @default(MOCK)
+  status String
+  note   String
+  jobs   ProviderJob[]
+}
+
+model ProviderJob {
+  id         String   @id @default(uuid()) @db.Uuid
+  providerId String   @db.Uuid
+  type       String
+  status     String
+  attempts   Int      @default(0)
+  lastError  String?
+  createdAt  DateTime @default(now())
+  provider   Provider @relation(fields: [providerId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  actor     String
+  action    String
+  target    String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model OutboxEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      String
+  payload   Json
+  status    String
+  attempts  Int      @default(0)
+  lastError String?
+  createdAt DateTime @default(now())
+
+  @@index([status, createdAt])
+}
